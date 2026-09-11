@@ -1,0 +1,411 @@
+@startuml
+' ============================================================
+' 图 5-1：数据库总体 ER 图
+' 展示 sys、kb、open、qa、ai、rt 等表组之间的主外键或业务关联
+' ============================================================
+
+skinparam backgroundColor #FEFEFE
+skinparam roundCorner 8
+skinparam defaultFontName SimHei
+skinparam defaultFontSize 11
+skinparam packageBorderColor #2E75B6
+skinparam packageBackgroundColor #F2F7FB
+skinparam packageFontColor #2E75B6
+skinparam packageFontSize 14
+skinparam entityBorderColor #2E75B6
+skinparam entityBackgroundColor #FFFFFF
+skinparam arrowColor #666666
+skinparam arrowFontSize 10
+
+title 数据库总体 ER 图
+
+' ── 系统管理模块 ──
+package "系统管理 (sys_*)" as sys_pkg #E8F0F8 {
+  entity "sys_org\n机构/部门表" as sys_org {
+    * id : BIGINT <<PK>>
+    --
+    parent_id : BIGINT <<FK>>
+    name : VARCHAR(100)
+    code : VARCHAR(64) <<UK>>
+    type : VARCHAR(20)
+    status : VARCHAR(16)
+  }
+
+  entity "sys_user\n人员账号表" as sys_user {
+    * id : BIGINT <<PK>>
+    --
+    org_id : BIGINT <<FK>>
+    username : VARCHAR(64) <<UK>>
+    password : VARCHAR(100)
+    real_name : VARCHAR(64)
+    status : VARCHAR(16)
+  }
+
+  entity "sys_role\n角色表" as sys_role {
+    * id : BIGINT <<PK>>
+    --
+    name : VARCHAR(64)
+    code : VARCHAR(64) <<UK>>
+    data_scope : VARCHAR(16)
+    status : VARCHAR(16)
+  }
+
+  entity "sys_permission\n菜单/按钮权限表" as sys_perm {
+    * id : BIGINT <<PK>>
+    --
+    parent_id : BIGINT
+    name : VARCHAR(64)
+    type : VARCHAR(16)
+    permission_code : VARCHAR(128)
+    route : VARCHAR(128)
+  }
+
+  entity "sys_user_role\n用户-角色关系" as sys_ur {
+    * id : BIGINT <<PK>>
+    --
+    user_id : BIGINT <<FK>>
+    role_id : BIGINT <<FK>>
+  }
+
+  entity "sys_role_permission\n角色-权限关系" as sys_rp {
+    * id : BIGINT <<PK>>
+    --
+    role_id : BIGINT <<FK>>
+    permission_id : BIGINT <<FK>>
+  }
+
+  entity "sys_login_log\n登录日志" as sys_login {
+    * id : BIGINT <<PK>>
+    --
+    user_id : BIGINT <<FK>>
+    username : VARCHAR(64)
+    status : VARCHAR(16)
+    login_time : DATETIME
+  }
+
+  entity "sys_operation_log\n操作日志" as sys_op {
+    * id : BIGINT <<PK>>
+    --
+    user_id : BIGINT <<FK>>
+    username : VARCHAR(64)
+    module : VARCHAR(64)
+    status : VARCHAR(16)
+    cost_time : BIGINT
+  }
+
+  entity "sys_api_log\n开放API调用日志" as sys_api {
+    * id : BIGINT <<PK>>
+    --
+    app_id : BIGINT <<FK>>
+    app_key : VARCHAR(64)
+    api_path : VARCHAR(255)
+    cost_time : BIGINT
+  }
+}
+
+' ── 知识管理模块 ──
+package "知识管理 (kb_*)" as kb_pkg #E8F8E8 {
+  entity "kb_category\n知识分类表(树)" as kb_cat {
+    * id : BIGINT <<PK>>
+    --
+    parent_id : BIGINT
+    name : VARCHAR(100)
+    status : VARCHAR(16)
+  }
+
+  entity "kb_tag\n知识标签表" as kb_tag {
+    * id : BIGINT <<PK>>
+    --
+    name : VARCHAR(64) <<UK>>
+    color : VARCHAR(16)
+  }
+
+  entity "kb_article\n知识主表" as kb_art {
+    * id : BIGINT <<PK>>
+    --
+    title : VARCHAR(200)
+    category_id : BIGINT <<FK>>
+    knowledge_type : VARCHAR(32)
+    content : LONGTEXT
+    status : VARCHAR(20)
+    author_id : BIGINT <<FK>>
+    current_version : INT
+    view_count : BIGINT
+    like_count : BIGINT
+    favorite_count : BIGINT
+    comment_count : BIGINT
+  }
+
+  entity "kb_article_tag\n知识-标签关系" as kb_at {
+    * id : BIGINT <<PK>>
+    --
+    article_id : BIGINT <<FK>>
+    tag_id : BIGINT <<FK>>
+  }
+
+  entity "kb_attachment\n附件表" as kb_att {
+    * id : BIGINT <<PK>>
+    --
+    article_id : BIGINT <<FK>>
+    file_name : VARCHAR(255)
+    file_path : VARCHAR(512)
+    file_type : VARCHAR(32)
+    file_size : BIGINT
+  }
+
+  entity "kb_article_version\n知识版本表" as kb_ver {
+    * id : BIGINT <<PK>>
+    --
+    article_id : BIGINT <<FK>>
+    version_no : INT
+    title : VARCHAR(200)
+    content : LONGTEXT
+    editor_id : BIGINT <<FK>>
+  }
+
+  entity "kb_audit_record\n知识审核记录表" as kb_audit {
+    * id : BIGINT <<PK>>
+    --
+    article_id : BIGINT <<FK>>
+    submit_by : BIGINT
+    auditor_id : BIGINT
+    audit_status : VARCHAR(16)
+    audit_opinion : VARCHAR(500)
+  }
+
+  entity "kb_import_record\n知识导入记录表" as kb_import {
+    * id : BIGINT <<PK>>
+    --
+    file_name : VARCHAR(255)
+    total_count : INT
+    success_count : INT
+    fail_count : INT
+    status : VARCHAR(16)
+  }
+}
+
+' ── 互动模块 ──
+package "互动 (kb_* 互动)" as interact_pkg #FFF8E8 {
+  entity "kb_favorite\n收藏表" as kb_fav {
+    * id : BIGINT <<PK>>
+    --
+    article_id : BIGINT <<FK>>
+    user_id : BIGINT <<FK>>
+    folder : VARCHAR(64)
+  }
+
+  entity "kb_share\n分享表" as kb_share {
+    * id : BIGINT <<PK>>
+    --
+    article_id : BIGINT <<FK>>
+    from_user_id : BIGINT
+    to_user_id : BIGINT
+    read_status : TINYINT
+  }
+
+  entity "kb_comment\n评论表" as kb_cmt {
+    * id : BIGINT <<PK>>
+    --
+    article_id : BIGINT <<FK>>
+    user_id : BIGINT
+    parent_id : BIGINT
+    content : TEXT
+    status : VARCHAR(16)
+  }
+
+  entity "kb_like\n点赞/点踩表" as kb_like {
+    * id : BIGINT <<PK>>
+    --
+    target_type : VARCHAR(16)
+    target_id : BIGINT
+    user_id : BIGINT
+    type : TINYINT
+  }
+
+  entity "kb_view_log\n浏览记录表" as kb_view {
+    * id : BIGINT <<PK>>
+    --
+    article_id : BIGINT <<FK>>
+    user_id : BIGINT
+    stay_seconds : INT
+  }
+
+  entity "kb_search_log\n搜索日志表" as kb_search {
+    * id : BIGINT <<PK>>
+    --
+    user_id : BIGINT
+    keyword : VARCHAR(255)
+    result_count : INT
+  }
+
+  entity "kb_usage_stat\n使用统计表(按天)" as kb_stat {
+    * id : BIGINT <<PK>>
+    --
+    article_id : BIGINT <<FK>>
+    stat_date : DATE
+    view_count : BIGINT
+    like_count : BIGINT
+    favorite_count : BIGINT
+  }
+}
+
+' ── 开放能力模块 ──
+package "开放能力 (open_*)" as open_pkg #F0E8F8 {
+  entity "open_app\n开放应用表" as open_app {
+    * id : BIGINT <<PK>>
+    --
+    app_name : VARCHAR(100)
+    app_key : VARCHAR(64) <<UK>>
+    app_secret : VARCHAR(128)
+    status : VARCHAR(16)
+    rate_limit : INT
+    scope : VARCHAR(255)
+  }
+}
+
+' ── AI 问答模块 ──
+package "AI 问答 (qa_* / ai_*)" as qa_pkg #F8E8E8 {
+  entity "kb_chunk\n向量化文本块" as kb_chunk {
+    * id : BIGINT <<PK>>
+    --
+    article_id : BIGINT <<FK>>
+    seq : INT
+    content : LONGTEXT
+    char_len : INT
+  }
+
+  entity "kb_vector_index\n向量化状态" as kb_vec {
+    * id : BIGINT <<PK>>
+    --
+    article_id : BIGINT <<UK, FK>>
+    chunk_count : INT
+    dim : INT
+    status : VARCHAR(16)
+    error_msg : VARCHAR(512)
+  }
+
+  entity "qa_session\n问答会话" as qa_sess {
+    * id : BIGINT <<PK>>
+    --
+    user_id : BIGINT <<FK>>
+    title : VARCHAR(255)
+    message_count : INT
+    deleted : TINYINT
+  }
+
+  entity "qa_message\n问答消息" as qa_msg {
+    * id : BIGINT <<PK>>
+    --
+    session_id : BIGINT <<FK>>
+    user_id : BIGINT
+    question : TEXT
+    answer : LONGTEXT
+    mode : VARCHAR(16)
+    top_k : INT
+  }
+
+  entity "qa_reference\n答案引用" as qa_ref {
+    * id : BIGINT <<PK>>
+    --
+    message_id : BIGINT <<FK>>
+    article_id : BIGINT <<FK>>
+    title : VARCHAR(255)
+    score : DECIMAL(6,4)
+    snippet : VARCHAR(512)
+  }
+
+  entity "qa_feedback\n答案反馈" as qa_fb {
+    * id : BIGINT <<PK>>
+    --
+    message_id : BIGINT <<FK>>
+    user_id : BIGINT <<FK>>
+    helpful : TINYINT
+    reason : VARCHAR(255)
+  }
+
+  entity "ai_llm_config\nLLM配置(单行)" as ai_cfg {
+    * id : BIGINT <<PK>>
+    --
+    base_url : VARCHAR(255)
+    api_key : VARCHAR(512)
+    model : VARCHAR(128)
+    temperature : DECIMAL(3,2)
+    enabled : TINYINT
+  }
+}
+
+' ── 实时辅助模块 ──
+package "实时辅助 (rt_*)" as rt_pkg #E8F8F8 {
+  entity "rt_active_session\n活跃实时会话" as rt_session {
+    * id : BIGINT <<PK>>
+    --
+    session_id : BIGINT <<UK, FK>>
+    agent_user_id : BIGINT <<FK>>
+    caller_number : VARCHAR(64)
+    cc_call_id : VARCHAR(128)
+    status : VARCHAR(20)
+    last_check_time : DATETIME
+  }
+
+  entity "rt_transcript\n实时转写片段" as rt_trans {
+    * id : BIGINT <<PK>>
+    --
+    session_id : BIGINT <<FK>>
+    speaker : VARCHAR(16)
+    content : TEXT
+    seq_no : INT
+  }
+}
+
+' ═══════════════════════════════════════════════
+' 核心关联关系
+' ═══════════════════════════════════════════════
+
+' ── RBAC 链 ──
+sys_user ||--o{ sys_ur : "user_id"
+sys_role ||--o{ sys_ur : "role_id"
+sys_role ||--o{ sys_rp : "role_id"
+sys_perm ||--o{ sys_rp : "permission_id"
+sys_org ||--o{ sys_user : "org_id"
+
+' ── 知识管理链 ──
+kb_cat ||--o{ kb_art : "category_id"
+kb_art ||--o{ kb_at : "article_id"
+kb_tag ||--o{ kb_at : "tag_id"
+kb_art ||--o{ kb_att : "article_id"
+kb_art ||--o{ kb_ver : "article_id"
+kb_art ||--o{ kb_audit : "article_id"
+sys_user ||--o{ kb_art : "author_id"
+sys_user ||--o{ kb_ver : "editor_id"
+
+' ── 互动链 ──
+kb_art ||--o{ kb_fav : "article_id"
+sys_user ||--o{ kb_fav : "user_id"
+kb_art ||--o{ kb_share : "article_id"
+kb_art ||--o{ kb_cmt : "article_id"
+kb_art ||--o{ kb_view : "article_id"
+kb_art ||--o{ kb_stat : "article_id"
+
+' ── 开放能力链 ──
+open_app ||--o{ sys_api : "app_id"
+
+' ── AI 问答链 ──
+kb_art ||--o{ kb_chunk : "article_id"
+kb_art ||--o{ kb_vec : "article_id"
+sys_user ||--o{ qa_sess : "user_id"
+qa_sess ||--o{ qa_msg : "session_id"
+qa_msg ||--o{ qa_ref : "message_id"
+qa_msg ||--o{ qa_fb : "message_id"
+kb_art ||--o{ qa_ref : "article_id"
+sys_user ||--o{ qa_fb : "user_id"
+
+' ── 实时辅助链 ──
+qa_sess ||--o{ rt_session : "session_id"
+qa_sess ||--o{ rt_trans : "session_id"
+sys_user ||--o{ rt_session : "agent_user_id"
+
+' ── 日志关联 ──
+sys_user ||--o{ sys_login : "user_id"
+sys_user ||--o{ sys_op : "user_id"
+
+@enduml

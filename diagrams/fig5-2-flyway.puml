@@ -1,0 +1,73 @@
+@startuml
+' ============================================================
+' 图 5-2：Flyway 迁移版本演进图
+' 展示 V1 至 V15 的数据库版本演进过程
+' ============================================================
+
+skinparam backgroundColor #FEFEFE
+skinparam defaultFontSize 12
+skinparam defaultFontName SimHei
+
+title Flyway 数据库迁移版本演进 (V1 ~ V15)
+
+rectangle "V1: 初始化全部表结构" as v1 #2E75B6/white {
+  rectangle "系统管理 9 表\n(sys_org~sys_api_log)" as v1_1 #D5E8F0
+  rectangle "知识管理 9 表\n(kb_category~kb_download_log)" as v1_2 #D5E8F0
+  rectangle "互动 7 表\n(kb_favorite~kb_usage_stat)" as v1_3 #D5E8F0
+  rectangle "开放能力 1 表\n(open_app)" as v1_4 #D5E8F0
+}
+
+rectangle "V2: RBAC 种子数据" as v2 #5B9BD5/white {
+  rectangle "根机构\n(总公司)" as v2_1 #BDD7EE
+  rectangle "超级管理员\nadmin" as v2_2 #BDD7EE
+  rectangle "5 内置角色\nADMIN/KNOWLEDGE_ADMIN\nAUDITOR/AGENT/USER" as v2_3 #BDD7EE
+  rectangle "菜单权限树\nDIR/MENU/BUTTON" as v2_4 #BDD7EE
+}
+
+rectangle "V3~V9: 模块权限补授" as v3_9 #8DB4E2/white {
+  rectangle "V3: 系统管理按钮权限" as v3 #BDD7EE
+  rectangle "V4: 分类/标签按钮权限" as v4 #BDD7EE
+  rectangle "V5: 知识管理按钮权限" as v5 #BDD7EE
+  rectangle "V6: 互动点赞权限" as v6 #BDD7EE
+  rectangle "V7: 非admin角色补授" as v7 #BDD7EE
+  rectangle "V8: 数据统计授权" as v8 #BDD7EE
+  rectangle "V9: 开放API按钮权限" as v9 #BDD7EE
+}
+
+rectangle "V10~V11: 模块 9\nAI 智能问答" as v10_11 #FFC000/white {
+  rectangle "V10: 建6表\nkb_chunk/kb_vector_index\nqa_session/qa_message\nqa_reference/qa_feedback" as v10 #FFE699
+  rectangle "V11: LLM配置\nai_llm_config\n(单行 id=1)" as v11 #FFE699
+}
+
+rectangle "V12~V14: 社区功能" as v12_14 #A5A5A5/white {
+  rectangle "V12: 社区用户资料" as v12 #D9D9D9
+  rectangle "V13: 社区文章上传" as v13 #D9D9D9
+  rectangle "V14: 社区草稿编辑" as v14 #D9D9D9
+}
+
+rectangle "V15: 模块 10\n客服实时辅助" as v15 #ED7D31/white {
+  rectangle "rt_active_session\n活跃实时会话" as v15_1 #F8CBAD
+  rectangle "rt_transcript\n实时转写片段" as v15_2 #F8CBAD
+  rectangle "RBAC: 坐席辅助台\n权限码 realtime:assist" as v15_3 #F8CBAD
+}
+
+' 连接线
+v1 -down-> v2 : "种子数据"
+v2 -down-> v3_9 : "增量补授"
+v3_9 -down-> v10_11 : "二期智能问答"
+v10_11 -down-> v12_14 : "社区扩展"
+v12_14 -down-> v15 : "实时辅助"
+
+note right of v10_11
+  一期：26 张表
+  二期：+8 张表
+  总计：34 张业务表
+end note
+
+note right of v15
+  核心原则：
+  增量不回改
+  全部幂等可重复执行
+end note
+
+@enduml

@@ -1,0 +1,198 @@
+@startuml
+' ============================================================
+' 图 5-3：系统管理表关系图
+' 突出用户、角色、权限、机构和日志表的关系
+' ============================================================
+
+skinparam backgroundColor #FEFEFE
+skinparam roundCorner 8
+skinparam defaultFontName SimHei
+skinparam entityBorderColor #2E75B6
+skinparam entityBackgroundColor #FFFFFF
+skinparam arrowColor #555555
+skinparam arrowFontSize 11
+
+title 系统管理表关系图 (RBAC)
+
+' ── 核心实体 ──
+
+entity "sys_org\n机构/部门表(树)" as org #D5E8F0 {
+  * id <<PK>>
+  --
+  parent_id <<自关联>>
+  name : VARCHAR(100)
+  code : VARCHAR(64) <<UK>>
+  type : COMPANY/DEPT
+  sort : INT
+  status : ENABLED/DISABLED
+  create_by/create_time
+  update_by/update_time
+  deleted : TINYINT
+}
+
+entity "sys_user\n人员账号表" as user #D5E8F0 {
+  * id <<PK>>
+  --
+  org_id <<FK→sys_org>>
+  username : VARCHAR(64) <<UK>>
+  password : BCrypt 密文
+  real_name/nickname
+  avatar/email/phone
+  gender : M/F/U
+  status : ENABLED/DISABLED
+  expire_time
+  last_login_time/last_login_ip
+  remark
+  create_by/create_time
+  update_by/update_time
+  deleted : TINYINT
+}
+
+entity "sys_role\n角色表" as role #D5E8F0 {
+  * id <<PK>>
+  --
+  name : VARCHAR(64)
+  code : VARCHAR(64) <<UK>>
+  data_scope : ALL/DEPT/SELF
+  sort : INT
+  status : ENABLED/DISABLED
+  remark
+  create_by/create_time
+  update_by/update_time
+  deleted : TINYINT
+}
+
+entity "sys_permission\n菜单/按钮权限表(树)" as perm #D5E8F0 {
+  * id <<PK>>
+  --
+  parent_id <<自关联>>
+  name : VARCHAR(64)
+  type : DIR/MENU/BUTTON
+  permission_code : VARCHAR(128)
+  route : VARCHAR(128)
+  icon : VARCHAR(64)
+  sort : INT
+  status : ENABLED/DISABLED
+  create_by/create_time
+  update_by/update_time
+  deleted : TINYINT
+}
+
+' ── 关系表 ──
+
+entity "sys_user_role\n用户-角色关系" as ur #FFF2CC {
+  * id <<PK>>
+  --
+  user_id <<FK→sys_user>>
+  role_id <<FK→sys_role>>
+  ==UK==
+  (user_id, role_id)
+}
+
+entity "sys_role_permission\n角色-权限关系" as rp #FFF2CC {
+  * id <<PK>>
+  --
+  role_id <<FK→sys_role>>
+  permission_id <<FK→sys_permission>>
+  ==UK==
+  (role_id, permission_id)
+}
+
+' ── 日志表 ──
+
+entity "sys_login_log\n登录日志" as login_log #E8E8E8 {
+  * id <<PK>>
+  --
+  user_id <<FK→sys_user>>
+  username : VARCHAR(64)
+  login_ip : VARCHAR(64)
+  login_location
+  client : VARCHAR(64)
+  status : SUCCESS/FAIL
+  msg : VARCHAR(255)
+  login_time : DATETIME
+}
+
+entity "sys_operation_log\n操作日志" as op_log #E8E8E8 {
+  * id <<PK>>
+  --
+  user_id <<FK→sys_user>>
+  username : VARCHAR(64)
+  module : VARCHAR(64)
+  operation : VARCHAR(128)
+  method : VARCHAR(255)
+  request_uri
+  request_param : TEXT
+  status : VARCHAR(16)
+  error_msg : TEXT
+  cost_time : BIGINT
+  operation_time : DATETIME
+}
+
+entity "sys_api_log\n开放API调用日志" as api_log #E8E8E8 {
+  * id <<PK>>
+  --
+  app_id <<FK→open_app>>
+  app_key : VARCHAR(64)
+  api_path : VARCHAR(255)
+  http_method : VARCHAR(16)
+  request_param : TEXT
+  response_code : INT
+  client_ip : VARCHAR(64)
+  cost_time : BIGINT
+  create_time : DATETIME
+}
+
+entity "open_app\n开放应用表" as open_app #F0E8F8 {
+  * id <<PK>>
+  --
+  app_name : VARCHAR(100)
+  app_key : VARCHAR(64) <<UK>>
+  app_secret : VARCHAR(128)
+  status : ENABLED/DISABLED
+  rate_limit : INT
+  scope : VARCHAR(255)
+  create_by/create_time
+  update_by/update_time
+  deleted : TINYINT
+}
+
+' ═══════════════════════════════════════════════
+' 关系连线
+' ═══════════════════════════════════════════════
+
+' ── 组织-用户 ──
+org ||--o{ user : "org_id\n一个机构下有多个用户"
+
+' ── 用户-角色 (多对多) ──
+user ||--o{ ur : "user_id"
+role ||--o{ ur : "role_id"
+
+' ── 角色-权限 (多对多) ──
+role ||--o{ rp : "role_id"
+perm ||--o{ rp : "permission_id"
+
+' ── 权限树自关联 ──
+perm ||--o{ perm : "parent_id\n目录→菜单→按钮"
+
+' ── 机构树自关联 ──
+org ||--o{ org : "parent_id\n公司→部门→子部门"
+
+' ── 日志关联 ──
+user ||--o{ login_log : "user_id\n记录每次登录"
+user ||--o{ op_log : "user_id\n记录每次操作"
+open_app ||--o{ api_log : "app_id\n记录每次API调用"
+
+' ── 图例 ──
+legend right
+  | 颜色 | 含义 |
+  | <#D5E8F0> | 核心实体表 |
+  | <#FFF2CC> | 关系映射表 |
+  | <#E8E8E8> | 日志审计表 |
+  | <#F0E8F8> | 开放能力表 |
+  | PK | 主键 (BIGINT UNSIGNED AUTO_INCREMENT) |
+  | UK | 唯一约束 |
+  | FK | 外键关联 |
+endlegend
+
+@enduml
